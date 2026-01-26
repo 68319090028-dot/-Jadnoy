@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Plant System</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2ecc71;
+            --dark: #2c3e50;
+            --light: #f4f7f6;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); margin: 0; display: flex; flex-direction: column; align-items: center; }
+        header { background: var(--primary); color: white; width: 100%; padding: 20px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; width: 90%; margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 25px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; border-bottom: 5px solid transparent; }
+        .card:hover { transform: translateY(-5px); border-bottom: 5px solid var(--primary); }
+        .card i { font-size: 2.5rem; margin-bottom: 10px; color: var(--primary); }
+        .card h3 { margin: 10px 0; color: #7f8c8d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .card .value { font-size: 2rem; font-weight: bold; color: var(--dark); }
+        .card .unit { font-size: 1rem; color: #95a5a6; margin-left: 5px; }
+        
+        .control-card { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 25px 40px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1><i class="fas fa-leaf"></i> Smart Plant Dashboard</h1>
+    <p><span id="online-indicator" class="status-dot"></span> ระบบ: <span id="system-status">กำลังเชื่อมต่อ...</span></p>
+</header>
+
+<div class="container">
+    <div class="card">
+        <i class="fas fa-thermometer-half" style="color: #e74c3c;"></i>
+        <h3>อุณหภูมิ</h3>
+        <div class="value"><span id="temp">--</span><span class="unit">°C</span></div>
+    </div>
+
+    <div class="card">
+        <i class="fas fa-tint" style="color: #3498db;"></i>
+        <h3>ความชื้นอากาศ</h3>
+        <div class="value"><span id="hum">--</span><span class="unit">%</span></div>
+    </div>
+
+    <div class="card">
+        <i class="fas fa-seedling" style="color: #27ae60;"></i>
+        <h3>ความชื้นในดิน</h3>
+        <div class="value"><span id="soil">--</span><span class="unit">%</span></div>
+    </div>
+
+    <div class="card">
+        <i class="fas fa-water" style="color: #2980b9;"></i>
+        <h3>ระดับน้ำ</h3>
+        <div class="value"><span id="water">--</span><span class="unit">cm</span></div>
+    </div>
+
+    <div class="control-card">
+        <div style="text-align: left;">
+            <h3 style="margin: 0; color: var(--dark);">ควบคุมไฟ LED</h3>
+            <p id="led-status" style="margin: 5px 0 0 0; color: #95a5a6;">สถานะ: กำลังโหลด...</p>
+        </div>
+        <label class="switch">
+            <input type="checkbox" id="led-toggle" onclick="toggleLED()">
+            <span class="slider"></span>
+        </label>
+    </div>
+</div>
+
+<script>
+    // ✅ นำข้อมูลที่คุณให้มาใส่ตรงนี้
+    const firebaseConfig = {
+        apiKey: "AIzaSyCQV4ozkNV6TQr1t06XamENDWsRttkBHv8",
+        authDomain: "jadnoy.firebaseapp.com",
+        projectId: "jadnoy",
+        storageBucket: "jadnoy.firebasestorage.app",
+        messagingSenderId: "317835096634",
+        appId: "1:317835096634:web:ba44271f1a943beed7fb03",
+        measurementId: "G-MVDWJDP1SQ",
+        databaseURL: "https://jadnoy-default-rtdb.firebaseio.com" // เพิ่ม URL Database
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 🔐 ล็อกอินด้วย Email/Pass ที่ตั้งไว้ใน ESP8266 (เพื่อให้มีสิทธิ์เขียนข้อมูล)
+    firebase.auth().signInWithEmailAndPassword("test@test.com", "123456")
+        .then(() => {
+            document.getElementById('system-status').innerText = "ออนไลน์";
+            document.getElementById('online-indicator').classList.add('status-online');
+            console.log("Authenticated successfully");
+        })
+        .catch((error) => {
+            document.getElementById('system-status').innerText = "ล็อกอินไม่สำเร็จ";
+            console.error("Auth Error:", error.message);
+        });
+
+    // 📊 ดึงข้อมูลจาก Path "/plant" มาแสดงผล
+    const plantRef = db.ref('plant');
+    plantRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // อัปเดตตัวเลข (ใช้ .toFixed เพื่อจำกัดทศนิยม)
+            if(data.temperature !== undefined) document.getElementById('temp').innerText = parseFloat(data.temperature).toFixed(1);
+            if(data.humidity !== undefined) document.getElementById('hum').innerText = parseFloat(data.humidity).toFixed(1);
+            if(data.soil !== undefined) document.getElementById('soil').innerText = data.soil;
+            if(data.water !== undefined) document.getElementById('water').innerText = parseFloat(data.water).toFixed(1);
+            
+            // อัปเดตปุ่ม Toggle ตามค่าใน Firebase
+            const ledToggle = document.getElementById('led-toggle');
+            if(data.led !== undefined) {
+                ledToggle.checked = data.led;
+                document.getElementById('led-status').innerText = "สถานะ: " + (data.led ? "เปิดไฟอยู่" : "ปิดไฟอยู่");
+            }
+        }
+    }, (error) => {
+        console.error("Data Read Error:", error);
+    });
+
+    // ⚡ ฟังก์ชันส่งค่ากลับไปที่ Firebase เมื่อกดสวิตช์
+    function toggleLED() {
+        const isChecked = document.getElementById('led-toggle').checked;
+        db.ref('plant/led').set(isChecked)
+            .then(() => console.log("LED updated to:", isChecked))
+            .catch((error) => alert("ไม่สามารถควบคุมได้: " + error.message));
+    }
+</script>
+
+</body>
+</html>
