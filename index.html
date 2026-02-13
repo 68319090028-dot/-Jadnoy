@@ -86,16 +86,15 @@
 <script>
     // ✅ นำข้อมูลที่คุณให้มาใส่ตรงนี้
     const firebaseConfig = {
-        apiKey: "AIzaSyCQV4ozkNV6TQr1t06XamENDWsRttkBHv8",
-        authDomain: "https://jadnoy-default-rtdb.firebaseio.com",
-        projectId: "jadnoy",
-        storageBucket: "jadnoy.firebasestorage.app",
-        messagingSenderId: "317835096634",
-        appId: "1:317835096634:web:ba44271f1a943beed7fb03",
-        measurementId: "G-MVDWJDP1SQ",
-        databaseURL: "https://jadnoy-default-rtdb.firebaseio.com" // เพิ่ม URL Database
-    };
-
+  apiKey: "AIzaSyCQV4ozkNV6TQr1t06XamENDWsRttkBHv8",
+  authDomain: "jadnoy.firebaseapp.com",
+  databaseURL: "https://jadnoy-default-rtdb.firebaseio.com",
+  projectId: "jadnoy",
+  storageBucket: "jadnoy.firebasestorage.app",
+  messagingSenderId: "317835096634",
+  appId: "1:317835096634:web:ba44271f1a943beed7fb03",
+  measurementId: "G-MVDWJDP1SQ"
+};
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
